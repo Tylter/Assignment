@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Word Guessing Game — Definitions as Clues</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --card: #0b1220;
+      --ink: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #60a5fa;
+      --good: #22c55e;
+      --bad: #ef4444;
+      --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 20% -10%, #1e293b60, transparent 60%),
+        radial-gradient(900px 500px at 120% 10%, #0ea5e980, transparent 60%),
+        linear-gradient(180deg, #0b1324, #0a0f1d 40%, #090d19);
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .app {
+      width: 100%;
+      max-width: 860px;
+      background: linear-gradient(180deg, #0c1426, #0b1220 50%, #0b1120);
+      border: 1px solid #1f2a44;
+      border-radius: 16px;
+      box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255,255,255,0.03);
+      overflow: hidden;
+    }
+    header {
+      padding: 18px 22px;
+      background: linear-gradient(180deg, #101828, #0f172a 70%);
+      border-bottom: 1px solid #1f2a44;
+      display: grid;
+      gap: 4px;
+    }
+    header h1 {
+      font-size: 20px;
+      margin: 0;
+      letter-spacing: .2px;
+    }
+    header .sub {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .content {
+      padding: 22px;
+      display: grid;
+      gap: 18px;
+    }
+    .row {
+      display: grid;
+      gap: 10px;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .pill {
+      border: 1px solid #233253;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #0b1426;
+    }
+    .card {
+      background: linear-gradient(180deg, #0b1324, #0a1222);
+      border: 1px solid #1f2a44;
+      border-radius: 12px;
+      padding: 16px;
+      display: grid;
+      gap: 8px;
+    }
+    .label {
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+    }
+    .def {
+      font-size: 18px;
+      line-height: 1.55;
+    }
+    .masked {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      letter-spacing: 2px;
+      color: #cbd5e1;
+      background: #0d1a33;
+      border: 1px dashed #253659;
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: inline-block;
+      margin-top: 4px;
+      user-select: none;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    @media (min-width: 640px) {
+      .controls {
+        grid-template-columns: 1fr auto auto auto;
+        align-items: center;
+      }
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 14px;
+      background: #0b1426;
+      border: 1px solid #243453;
+      border-radius: 10px;
+      color: var(--ink);
+      outline: none;
+      font-size: 16px;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    input[type="text"]::placeholder { color: #7c8aa8; }
+    input[type="text"]:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px #3b82f625;
+    }
+    .btn {
+      appearance: none;
+      border: 1px solid #21406b;
+      background: linear-gradient(180deg, #0f1e36, #0b1730);
+      color: #e8f0ff;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-weight: 650;
+      cursor: pointer;
+      transition: transform .05s ease, background .2s ease, border-color .2s ease;
+      white-space: nowrap;
+    }
+    .btn:hover { background: #122141; border-color: #2b5596; }
+    .btn:active { transform: translateY(1px); }
+    .btn.primary {
+      background: linear-gradient(180deg, #1f4ab5, #1b3f98);
+      border-color: #2e6be6;
+      box-shadow: 0 6px 14px rgba(46, 107, 230, .25);
+    }
+    .btn.warn { border-color: #946200; background: linear-gradient(180deg, #2e2300, #1d1600); color: #ffd88a; }
+    .btn.ghost { background: transparent; border-color: #233253; color: #cbd5e1; }
+    .feedback {
+      min-height: 28px;
+      font-size: 15px;
+    }
+    .good { color: var(--good); }
+    .bad { color: var(--bad); }
+    .warnText { color: var(--warn); }
+    footer {
+      border-top: 1px solid #1f2a44;
+      background: #0b1220;
+      padding: 14px 22px;
+      color: var(--muted);
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      background: #0d1a33;
+      border: 1px solid #253659;
+      border-bottom-width: 3px;
+      border-radius: 6px;
+      padding: 2px 6px;
+      color: #cbd5e1;
+    }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Word guessing game">
+    <header>
+      <h1>Word Guessing Game — Definitions</h1>
+      <div class="sub">Type the word that matches the clue. Use hints if you get stuck.</div>
+    </header>
+
+    <div class="content">
+      <div class="meta">
+        <div class="pill" id="progress">Word 1 of 9</div>
+        <div class="pill">Score: <span id="score">0</span></div>
+        <div class="pill">Streak: <span id="streak">0</span></div>
+        <div class="pill">Hints used: <span id="hintsUsed">0</span></div>
+      </div>
+
+      <section class="card">
+        <div class="label">Definition</div>
+        <div class="def" id="definition" aria-live="polite"></div>
+        <div class="label">Word pattern</div>
+        <div class="masked" id="maskedWord" aria-live="polite"></div>
+      </section>
+
+      <section class="row">
+        <div class="controls" role="group" aria-label="Answer controls">
+          <input id="answer" type="text" placeholder="Type your guess and press Enter or Check…" autocomplete="off" aria-label="Your guess" />
+          <button class="btn primary" id="checkBtn">Check Answer</button>
+          <button class="btn" id="hintBtn" title="Reveal first letter">Hint</button>
+          <button class="btn ghost" id="revealBtn" title="Show the answer (0 points)">Reveal</button>
+        </div>
+        <div class="feedback" id="feedback" aria-live="polite"></div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn ghost" id="skipBtn">Skip</button>
+          <button class="btn" id="nextBtn" disabled>Next</button>
+          <button class="btn warn" id="restartBtn" title="Shuffle and restart">Restart</button>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      <div>
+        Pro tip: Press <span class="kbd">Enter</span> to check, <span class="kbd">Ctrl</span> + <span class="kbd">H</span> for hint, <span class="kbd">Ctrl</span> + <span class="kbd">N</span> for next.
+      </div>
+      <div>Built with plain HTML/CSS/JS</div>
+    </footer>
+  </div>
+
+  <script>
+    // === Data: Words and definitions (exact list you provided) ===
+    const WORDS = [
+      {
+        word: "Ubiquitous",
+        def: "Present, appearing, or found everywhere."
+      },
+      {
+        word: "Vacillate",
+        def: "To waver between different opinions or actions; be indecisive."
+      },
+      {
+        word: "Winsome",
+        def: "Attractive or appealing in a fresh, innocent, or charming way."
+      },
+      {
+        word: "Xenophobia",
+        def: "Dislike of or prejudice against people from other countries."
+      },
+      {
+        word: "Yammer",
+        def: "To talk loudly and persistently; complain or chatter incessantly."
+      },
+      {
+        word: "Zealot",
+        def: "A person who is fanatical and uncompromising in pursuit of their ideals."
+      },
+      {
+        word: "Aggrandizement",
+        def: "The act of increasing the power, status, or wealth of a person or institution."
+      },
+      {
+        word: "Burdensome",
+        def: "Difficult to carry out or fulfill; taxing or oppressive."
+      },
+      {
+        word: "Criterion",
+        def: "A principle or standard by which something may be judged or decided."
+      }
+    ];
+
+    // === Utility functions ===
+    const sanitize = s => s.toLowerCase().replace(/[^a-z]/g, "");
+    function shuffle(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    // === Game state ===
+    let order = shuffle(WORDS.map((_, i) => i));
+    let idx = 0;
+    let score = 0;
+    let streak = 0;
+    let usedHints = 0;
+    let revealed = new Set(); // indices of revealed letters for current word
+    let finished = false;
+
+    // === Elements ===
+    const elDef = document.getElementById("definition");
+    const elMasked = document.getElementById("maskedWord");
+    const elProgress = document.getElementById("progress");
+    const elScore = document.getElementById("score");
+    const elStreak = document.getElementById("streak");
+    const elHintsUsed = document.getElementById("hintsUsed");
+    const elAnswer = document.getElementById("answer");
+    const elFeedback = document.getElementById("feedback");
+    const btnCheck = document.getElementById("checkBtn");
+    const btnHint = document.getElementById("hintBtn");
+    const btnReveal = document.getElementById("revealBtn");
+    const btnSkip = document.getElementById("skipBtn");
+    const btnNext = document.getElementById("nextBtn");
+    const btnRestart = document.getElementById("restartBtn");
+
+    // === Rendering ===
+    function current() {
+      return WORDS[order[idx]];
+    }
+
+    function buildMasked(word) {
+      // Show revealed letters; others as •; keep punctuation (none here) and hyphens/spaces if present
+      let out = "";
+      for (let i = 0; i < word.length; i++) {
+        const ch = word[i];
+        if (/[a-z]/i.test(ch)) {
+          out += revealed.has(i) ? ch : "•";
+        } else {
+          out += ch; // spaces, hyphens, apostrophes
+        }
+        if (i < word.length - 1) out += " ";
+      }
+      return out;
+    }
+
+    function revealFirstAndPattern() {
+      // By default, reveal length via dots and first letter as pattern
+      revealed.clear();
+      const word = current().word;
+      // Reveal first and last letters only after hints;
+      // initially reveal just the number of letters (no letters shown)
+      // We'll reveal first letter on first hint.
+      elMasked.textContent = buildMasked(word);
+    }
+
+    function render() {
+      const { word, def } = current();
+      elDef.textContent = def;
+      elProgress.textContent = `Word ${idx + 1} of ${WORDS.length}`;
+      elScore.textContent = score;
+      elStreak.textContent = streak;
+      elHintsUsed.textContent = usedHints;
+      elAnswer.value = "";
+      elAnswer.placeholder = `This word has ${word.replace(/[^a-z]/gi, "").length} letters`;
+      elFeedback.textContent = "";
+      elFeedback.className = "feedback";
+      btnNext.disabled = true;
+      revealFirstAndPattern();
+      elAnswer.focus();
+    }
+
+    // === Game flow ===
+    function correctAnswerEffects() {
+      const base = 3;
+      const penalty = Math.min(usedHints, 2); // up to -2 for hints
+      const earned = Math.max(0, base - penalty);
+      score += earned;
+      streak += 1;
+      elFeedback.innerHTML = `✅ <span class="good"><strong>Correct!</strong></span> +${earned} point${earned !== 1 ? "s" : ""}.`;
+      elFeedback.className = "feedback good";
+      elScore.textContent = score;
+      elStreak.textContent = streak;
+      btnNext.disabled = false;
+    }
+
+    function wrongAnswerEffects(guess) {
+      streak = 0;
+      elStreak.textContent = streak;
+      elFeedback.innerHTML = `❌ <span class="bad"><strong>${guess}</strong></span> isn’t it. Try again or use a hint.`;
+      elFeedback.className = "feedback bad";
+    }
+
+    function revealAnswerEffects() {
+      const { word } = current();
+      streak = 0;
+      elStreak.textContent = streak;
+      elFeedback.innerHTML = `ℹ️ The answer is <strong>${word}</strong>. No points awarded.`;
+      elFeedback.className = "feedback warnText";
+      showAllLetters();
+      btnNext.disabled = false;
+    }
+
+    function showAllLetters() {
+      const { word } = current();
+      revealed.clear();
+      for (let i = 0; i < word.length; i++) revealed.add(i);
+      elMasked.textContent = buildMasked(word);
+    }
+
+    function giveHint() {
+      // 1st hint: reveal first letter
+      // 2nd hint: reveal last letter
+      // 3rd+ hint: reveal a random hidden letter
+      const { word } = current();
+      const letters = [...word].map((ch, i) => ({ ch, i })).filter(x => /[a-z]/i.test(x.ch));
+      const hidden = letters.filter(x => !revealed.has(x.i));
+      if (hidden.length === 0) return;
+
+      usedHints += 1;
+      if (usedHints === 1) {
+        const first = letters.find(Boolean);
+        if (first) revealed.add(first.i);
+      } else if (usedHints === 2) {
+        const last = letters[letters.length - 1];
+        if (last) revealed.add(last.i);
+      } else {
+        const pick = hidden[Math.floor(Math.random() * hidden.length)];
+        revealed.add(pick.i);
+      }
+      elHintsUsed.textContent = usedHints;
+      elMasked.textContent = buildMasked(word);
+      elFeedback.innerHTML = "💡 Hint revealed.";
+      elFeedback.className = "feedback";
+    }
+
+    function checkAnswer() {
+      const { word } = current();
+      const guessRaw = elAnswer.value.trim();
+      if (!guessRaw) return;
+      const guess = sanitize(guessRaw);
+      const target = sanitize(word);
+      if (guess === target) {
+        correctAnswerEffects();
+      } else {
+        wrongAnswerEffects(guessRaw);
+      }
+    }
+
+    function nextWord() {
+      usedHints = 0;
+      revealed.clear();
+      if (idx < WORDS.length - 1) {
+        idx += 1;
+        render();
+      } else {
+        finished = true;
+        endScreen();
+      }
+    }
+
+    function skipWord() {
+      usedHints = 0;
+      streak = 0;
+      elStreak.textContent = streak;
+      if (idx < WORDS.length - 1) {
+        idx += 1;
+        render();
+      } else {
+        finished = true;
+        endScreen();
+      }
+    }
+
+    function endScreen() {
+      elDef.innerHTML = `<strong>All done!</strong> You completed ${WORDS.length} words.`;
+      elMasked.textContent = "Play again with Restart.";
+      elFeedback.innerHTML = `🏁 Final score: <strong>${score}</strong> — Great job!`;
+      btnNext.disabled = true;
+      elAnswer.disabled = true;
+      btnCheck.disabled = true;
+      btnHint.disabled = true;
+      btnReveal.disabled = true;
+      btnSkip.disabled = true;
+    }
+
+    function restart() {
+      order = shuffle(WORDS.map((_, i) => i));
+      idx = 0;
+      score = 0;
+      streak = 0;
+      usedHints = 0;
+      revealed.clear();
+      finished = false;
+      elAnswer.disabled = false;
+      btnCheck.disabled = false;
+      btnHint.disabled = false;
+      btnReveal.disabled = false;
+      btnSkip.disabled = false;
+      render();
+    }
+
+    // === Event bindings ===
+    btnCheck.addEventListener("click", checkAnswer);
+    elAnswer.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") checkAnswer();
+    });
+    btnHint.addEventListener("click", giveHint);
+    btnReveal.addEventListener("click", revealAnswerEffects);
+    btnNext.addEventListener("click", nextWord);
+    btnSkip.addEventListener("click", skipWord);
+    btnRestart.addEventListener("click", restart);
+
+    // Keyboard shortcuts
+    document.addEventListener("keydown", (e) => {
+      if (e.ctrlKey && e.key.toLowerCase() === "h") {
+        e.preventDefault(); giveHint();
+      }
+      if (e.ctrlKey && e.key.toLowerCase() === "n") {
+        e.preventDefault(); if (!btnNext.disabled) nextWord();
+      }
+    });
+
+    // === Init ===
+    render();
+  </script>
+</body>
+</html>
